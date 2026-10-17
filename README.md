@@ -1,93 +1,154 @@
-# US Treasury Yield Curve Project
+# US Treasury Yield Curve Analysis
 
-A small learning project that loads, checks and visualizes US Treasury **par yield curve** data (2000-2023) with pandas and matplotlib, and runs one descriptive research question about the 10-year minus 2-year yield spread.
+A Python research project analyzing US Treasury par yield curves from 2000–2023. It combines data validation, yield-curve visualization, linear interpolation, and an exploratory study of mean reversion in the 10-year minus 2-year yield spread.
 
-This is a research and learning project. It is **not** a trading strategy and makes no claims about profits.
+**Main finding:** The reported correlations do not support mean reversion toward the trailing 252-observation average at the horizons examined. The relationship is positive in both the initial and evaluation periods, although weaker in the evaluation period.
 
-## Current progress
+This project examines yield-spread changes. It does not calculate investment returns or establish a profitable trading strategy.
 
-Implemented:
+## Research question
 
-1. **Data loading and checks** - combines three CSV files with different layouts into one table, parses dates, sorts, checks for duplicate dates and reports missing values (never fills them).
-2. **Charts** - par yield curves on three dates, and the 10Y-2Y spread over time.
-3. **Interpolated par-yield curve** - linear interpolation between published maturities for one date, with checks that the curve matches the observations. No extrapolation.
-4. **Mean-reversion study** - does the 10Y-2Y spread tend to move back toward its trailing 252-observation average? Looks at spread changes over the next 5, 20 and 60 observations, with a 70% / 30% initial / evaluation split.
+When the 10-year minus 2-year Treasury yield spread is unusually high or low relative to its recent history, does it subsequently move back toward its recent average?
 
-Not implemented: spot-rate or forward-rate curves, return calculations, any trading strategy or backtest.
+The analysis compares:
 
-## Data source
+- The spread’s distance from its trailing average, expressed as a z-score.
+- The spread’s subsequent change over 5, 20, and 60 observations.
 
-The CSV files in `data/raw/` are US Treasury **par yield curve rates** (daily, 1-month to 30-year maturities, in percent), 2000-2023. The file names match the downloads from the US Department of the Treasury's "Daily Treasury Par Yield Curve Rates" page under Interest Rate Statistics (home.treasury.gov). The files are kept exactly as downloaded and are never modified by the code.
+A negative relationship would be consistent with mean reversion toward the historical reference average: unusually high spreads would tend to fall, and unusually low spreads would tend to rise.
 
-The three files use different layouts (header capitalization, date format, and which maturities exist), which `src/load_data.py` standardizes.
+## Methods
 
-## Install and run
+### Data preparation
+
+The project combines three CSV files into a consistent dataset. The loading process standardizes column names and date formats, sorts observations, checks for duplicate dates, and reports missing values.
+
+The original files remain unchanged. Missing yields are not filled.
+
+### Yield-curve construction
+
+The project plots published par yields across maturities and constructs a linear interpolation for one selected date.
+
+The interpolated curve passes through the available input observations. Values between published maturities are estimates. The model does not extrapolate beyond the available maturity range.
+
+This is an interpolated **par-yield curve**, not a bootstrapped discount curve, spot-rate curve, or forward-rate curve.
+
+### Spread analysis
+
+The spread is calculated as:
+
+```text
+Spread in basis points = (10-year yield in percent − 2-year yield in percent) × 100
+```
+
+The research signal measures the spread relative to its trailing 252-observation mean and standard deviation:
+
+```text
+Z-score = (current spread − trailing mean) / trailing standard deviation
+```
+
+Trailing statistics use observations preceding the signal date. Subsequent spread changes are measured over 5, 20, and 60 observations.
+
+The sample is divided chronologically into an initial 70% and a later 30% evaluation period.
+
+## Results
+
+The generated charts report the following correlations between the trailing z-score and subsequent spread changes:
+
+| Forward horizon | Initial period | Evaluation period |
+|---|---:|---:|
+| 5 observations | +0.08 | +0.04 |
+| 20 observations | +0.19 | +0.11 |
+| 60 observations | +0.30 | +0.21 |
+
+All six correlations are positive. In this sample and specification, a higher spread relative to its recent average was associated with a higher subsequent spread change.
+
+These results do not support the proposed negative relationship associated with mean reversion. The positive association is weaker in the evaluation period.
+
+The scatter plots show substantial variation around the fitted lines. Statistical significance has not been established, and these results do not demonstrate trading profitability.
+
+![Signal versus subsequent spread changes](outputs/figures/mean_reversion_scatter.png)
+
+## Visualizations
+
+| Chart | Description |
+|---|---|
+| `yield_curves.png` | Published par-yield curves for March 31, 2000; March 31, 2021; and July 3, 2023 |
+| `spread_10y_2y_bp.png` | Historical 10-year minus 2-year spread, with negative spreads shaded |
+| `interpolated_par_curve.png` | Published maturity points and a linearly interpolated par-yield curve |
+| `spread_trailing_band.png` | Spread alongside its trailing 252-observation mean and a ±1 standard deviation band |
+| `mean_reversion_scatter.png` | Signal versus subsequent spread changes across three horizons and two sample periods |
+
+A negative 10-year minus 2-year spread means the 2-year yield exceeds the 10-year yield.
+
+![Historical Treasury yield spread](outputs/figures/spread_10y_2y_bp.png)
+
+## Data
+
+The input CSVs contain daily Treasury par-yield data spanning 2000–2023, with maturities ranging from 1 month to 30 years where available.
+
+Source reference: [US Department of the Treasury — Daily Treasury Par Yield Curve Rates](https://home.treasury.gov/resource-center/data-chart-center/interest-rates/TextView?type=daily_treasury_yield_curve).
+
+Original CSVs are stored in `data/raw/`. Their differing layouts are standardized by `src/load_data.py`.
+
+Yields remain in their published percentage units: `4.25` represents 4.25%. Decimal conversions, where used, are explicitly labeled.
+
+## Run the project
 
 Requires Python 3.9 or newer.
 
 ```bash
-git clone <repository-url>
-cd <repository-folder>
+git clone https://github.com/cjvolk/Yield-Curve-Project.git
+cd Yield-Curve-Project
+
 python3 -m venv .venv
-source .venv/bin/activate          # Windows PowerShell: .venv\Scripts\Activate.ps1
+source .venv/bin/activate
+
 pip install -r requirements.txt
 python main.py
 ```
 
-`python main.py` prints a data report (row count, dates, duplicates, missing values per maturity, self-checks, study results) and writes:
+On Windows PowerShell, activate the environment with:
 
-- `outputs/figures/*.png` - the charts
-- `data/processed/*.csv` - combined table and study tables (generated; not stored in git)
+```powershell
+.venv\Scripts\Activate.ps1
+```
 
-## Project layout
+The repository is currently private, so cloning requires authorized access.
+
+Running `main.py` prints data checks and study results, generates charts in `outputs/figures/`, and writes processed tables to `data/processed/`.
+
+Generated tables are excluded from version control and recreated when the project runs.
+
+## Project structure
 
 | Path | Purpose |
 |---|---|
-| `data/raw/` | The original Treasury CSVs |
-| `data/processed/` | Generated tables (recreated by `main.py`) |
-| `src/load_data.py` | Load, standardize, sort, duplicate and missing-value checks, unit conversions |
-| `src/interpolate.py` | Linear interpolation of one day's par-yield curve, with verification |
-| `src/mean_reversion.py` | Trailing z-score, forward spread changes, train/evaluation split, no-look-ahead checks |
-| `src/plots.py` | All charts |
-| `main.py` | Runs everything; chart dates are set at the top (`CURVE_DATES`, `INTERP_DATE`) |
-
-## Conventions
-
-- Yields stay in **percent** as published (`4.25` = 4.25%). The only decimal conversion is `percent_to_decimal` in `load_data.py`, which renames columns with a `_decimal` suffix.
-- The spread in **basis points** is `(10Y % - 2Y %) x 100`.
-- Missing values are reported, never filled.
-- These are **par yields**, not spot (zero-coupon) rates or forward rates.
-
-## Interpolation in plain language
-
-Treasury publishes yields at fixed maturities only, e.g. 3 years and 5 years. To estimate 4 years, draw a straight line between the 3-year and 5-year points and read off the height at 4 years: `y = y0 + (y1 - y0) * (m - m0) / (m1 - m0)`. Maturities are in years (1 month = 1/12). The curve passes exactly through every published point and never goes beyond the published range. Values between points are estimates, not published data.
-
-## What the charts show
-
-Example: the 10-year minus 2-year par yield spread, in basis points. Negative values (shaded) mean the curve was inverted: 2-year yields above 10-year yields.
-
-![10Y-2Y spread](outputs/figures/spread_10y_2y_bp.png)
-
-All charts in `outputs/figures/`:
-
-| File | Shows |
-|---|---|
-| `yield_curves.png` | Par yield vs. maturity on 2000-03-31, 2021-03-31 and 2023-07-03 |
-| `spread_10y_2y_bp.png` | 10Y-2Y spread over time (bp), inversions shaded |
-| `interpolated_par_curve.png` | Published yields (dots) and the linear interpolation (line) for one date |
-| `spread_trailing_band.png` | The spread with its trailing 252-observation mean and +/-1 standard deviation band |
-| `mean_reversion_scatter.png` | Trailing z-score vs. the spread change over the next 5, 20 and 60 observations |
-
-### Mean-reversion result so far
-
-In this data the spread did **not** tend to move back toward its trailing average. Correlations between the z-score and later spread changes were positive (for example about +0.30 in the initial period and +0.21 in the evaluation period at 60 observations), meaning a spread high relative to its recent average tended to keep rising over those horizons. The effect is weaker in the evaluation period. See the limitations below before reading anything into this.
+| `data/raw/` | Original input CSVs |
+| `data/processed/` | Generated datasets and study tables |
+| `outputs/figures/` | Saved charts |
+| `src/load_data.py` | Data loading, standardization, validation, and unit conversions |
+| `src/interpolate.py` | Linear par-yield interpolation and input-point checks |
+| `src/mean_reversion.py` | Trailing signals, forward spread changes, and sample division |
+| `src/plots.py` | Chart generation |
+| `main.py` | Main entry point and chart-date configuration |
+| `requirements.txt` | Python dependencies |
 
 ## Limitations
 
-- **Par yields only.** They are not spot or forward rates, and changes in them are not returns. Nothing here computes profits.
-- **Missing data.** 1M starts in July 2001, 2M in October 2018 and 4M in October 2022; 30Y is missing from February 2002 to early 2006; 2010-10-11 is blank in every column. The set of maturities changes over time, so curves from different eras are not fully comparable.
-- **Observation-based horizons.** "Next 5 / 20 / 60 observations" means rows in the data, not a fixed number of calendar days (weekends and holidays are absent).
-- **Overlapping windows.** In the mean-reversion study, neighbouring dates share most of their forward window, so the effective sample is roughly n / horizon, far smaller than the row counts. No significance tests are reported because naive ones would be invalid.
-- **Few regimes.** The 24-year sample contains only a handful of large rate cycles, and the evaluation period ends in the 2022-23 inversion.
-- **One specification.** The window (252), horizons and 70/30 split were fixed in advance and not optimized, so the result says nothing about other windows or horizons.
-- **Coverage.** Daily data ends 2023-12-29. Interpolated values between maturities are estimates, not published data.
+- **Overlapping outcomes:** Neighboring observations share future measurement periods. The plotted observations are not independent, and row counts overstate the amount of independent evidence. No dependence-adjusted significance tests are reported.
+- **A moving reference average:** The study tests subsequent spread changes against a signal based on a trailing average. It does not directly measure whether the spread crosses its future moving average or establish long-run stationarity.
+- **One specification:** Results apply to the selected trailing window, horizons, and sample division. They do not establish what happens under other specifications.
+- **Limited evaluation:** The later sample provides one chronological evaluation period. It is not a guarantee of performance in other periods.
+- **Changing maturity coverage:** Some maturities are unavailable during portions of the sample. Curves from different dates may contain different maturity points.
+- **Observation-based horizons:** Horizons count dataset observations rather than calendar days. Missing values can further restrict eligible observations.
+- **Historical coverage:** The dataset ends in December 2023 and does not describe current market conditions.
+- **No return model:** The study does not include instrument prices, coupon income, financing, transaction costs, or position sizing.
+
+## Next steps
+
+- Audit signal timing and ensure forward measurement windows do not cross the initial/evaluation boundary.
+- Assess uncertainty using methods that account for overlapping observations.
+- Examine whether the relationship is stable across historical subperiods.
+- Compare against simple forecasting baselines.
+- Obtain appropriate instrument data before attempting a trading backtest.
